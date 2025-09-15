@@ -1,0 +1,91 @@
+-- DDL ONLY: 테이블/제약/인덱스
+
+-- 사용자 정보 테이블
+CREATE TABLE `user` (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nickname VARCHAR(50) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    phone VARCHAR(20),
+    point INT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 리뷰 테이블
+CREATE TABLE review (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    rating INT NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_review_user FOREIGN KEY (user_id) REFERENCES `user`(id) ON DELETE CASCADE
+);
+
+-- 답글 테이블
+CREATE TABLE reply (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    review_id BIGINT NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_reply_review FOREIGN KEY (review_id) REFERENCES review(id) ON DELETE CASCADE
+);
+
+-- 1:1 문의 테이블
+CREATE TABLE inquiry (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_inquiry_user FOREIGN KEY (user_id) REFERENCES `user`(id) ON DELETE CASCADE
+);
+
+-- 가게 테이블
+CREATE TABLE store (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    address VARCHAR(255),
+    phone VARCHAR(20),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 미션 테이블
+CREATE TABLE mission (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    store_id BIGINT NOT NULL,
+    content VARCHAR(255) NOT NULL,
+    point INT NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_mission_store
+        FOREIGN KEY (store_id) REFERENCES store(id) ON DELETE CASCADE
+);
+
+-- 사용자-미션 진행 테이블
+-- status: ONGOING(진행중), COMPLETED(완료)
+CREATE TABLE user_mission (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    mission_id BIGINT NOT NULL,
+    status ENUM('ONGOING','COMPLETED') NOT NULL DEFAULT 'ONGOING',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_mission_user
+        FOREIGN KEY (user_id) REFERENCES `user`(id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_mission_mission
+        FOREIGN KEY (mission_id) REFERENCES mission(id) ON DELETE CASCADE,
+    CONSTRAINT uq_user_mission UNIQUE (user_id, mission_id)
+);
+
+-- review에 mission 연결
+ALTER TABLE review
+    ADD COLUMN mission_id BIGINT NULL,
+    ADD CONSTRAINT fk_review_mission
+        FOREIGN KEY (mission_id) REFERENCES mission(id) ON DELETE SET NULL;
+
+-- 한 미션에 대해 한 사용자가 리뷰 1개만 작성하도록 보장
+ALTER TABLE review
+    ADD CONSTRAINT uq_review_user_mission UNIQUE (user_id, mission_id);
